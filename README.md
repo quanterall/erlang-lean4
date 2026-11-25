@@ -22,7 +22,11 @@ Lean 4 proof checking for Erlang/OTP: a supervised pool of Lean REPL workers wit
   by machine (`pq_lean`: factorisations, gcds, solutions of linear systems). PQCF stays the solver; Lean is the judge.
 - **Proof checking as an OTP service.** A supervised pool of Lean workers with Mathlib, bounded time per check,
   structured verdicts; in-node or from another node over Erlang distribution.
-- **A checker for reasoning loops** (later): a statement and a proof go in, a verdict with Lean's errors comes out.
+- **Formal proof in eAgent's reasoning** (next). eAgent, part of layer L3 of FVLLMP, will use lean-check as the
+  proof checker of its reasoning: when a step of an argument can be stated formally, eAgent writes the Lean statement
+  and a proof, lean-check checks it, and the verdict (accepted, or Lean's errors and the goals left open) goes back
+  into the reasoning to accept the step or to revise it. The guarantee covers the formal statement, not its reading:
+  statements that carry weight in a conclusion are shown for review.
 - **Honest assurance.** A verdict states the axioms used and rests on a named trusted base; it says nothing about
   whether a statement says what its author meant.
 

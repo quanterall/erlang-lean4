@@ -9,7 +9,7 @@ returns a verdict saying whether Lean's kernel accepts the proof, from which axi
 | --- | --- |
 | **G1. Certified results for PQCF** | PQCF (the Photonic Quantum Computing Framework, a symbolic and numeric engine) is fast and its solvers are not verified. For an exact result it writes a Lean statement a reader can check by eye and a proof Lean checks by machine: the factors multiply back to the polynomial, the solution satisfies the linear system. PQCF stays the solver; Lean becomes the judge. |
 | **G2. Proof checking as an OTP service** | A supervised pool of Lean workers with Mathlib loaded, bounded time per check, killed and restarted on a timeout, structured results (status, reason, errors with positions, axioms). Callable in-node or from another node over Erlang distribution. |
-| **G3. A checker for reasoning loops (later)** | A model proposes a formal statement and proof, lean-check checks it, the errors go back to the model. The same verdict serves both uses; the loop itself is future work (section 8). |
+| **G3. Formal proof in eAgent's reasoning (next)** | eAgent, part of layer L3 of FVLLMP, will use lean-check as the proof checker of its reasoning: a step that can be stated formally is written as a Lean statement with a proof, lean-check checks it, and the verdict (accepted, or Lean's errors and the open goals) goes back into the reasoning to accept or revise the step. Statements that carry weight in a conclusion are shown for review, since a proof covers the formal statement, not its reading. The interface for this loop is on the roadmap (section 8). |
 | **G4. Honest assurance** | A verdict says exactly what was proved and from what: the axioms used, the trusted base (Lean's kernel, Mathlib, this toolchain), and nothing about whether the statement says what its author meant. |
 
 Non-goals for now: verifying the Erlang or Rust code of PQCF (only results are certified, one at a time); running
@@ -135,6 +135,7 @@ to secrets or networks it does not need.
 1. More PQCF certificates: the gcd's greatestness (a Bezout certificate: u A + v B = G), identities PQCF compares
    with other programs today (Wigner symbols, colour factors, beta-function coefficients), exact steady states.
 2. Interval certificates for PQCF's high-precision numerics (an enclosure with its bound, checked in Lean).
-3. The reasoning-loop API: a check that returns the remaining goals in a form a model can use, with budgets.
+3. The interface for eAgent's reasoning (FVLLMP L3): a check that returns the remaining goals in a form a model can
+   use, with budgets per step and per argument.
 4. Operations: environment snapshots to start workers faster, metrics, a CI gate with the negative fixtures on
    every toolchain change.
