@@ -14,9 +14,15 @@ RUN curl -sSfL https://raw.githubusercontent.com/leanprover/elan/$ELAN/elan-init
 ARG REPL=1b9fdf8ab81e52ba8651207c07e405129de2ffbe
 RUN git clone -q https://github.com/leanprover-community/repl /repl && cd /repl && git checkout -q $REPL \
  && test "$(git rev-parse HEAD)" = "$REPL" && lake build 2>&1 | tail -2 && test -x .lake/build/bin/repl
-# the environment the checks run in: Mathlib at its v4.36.0 tag (commit pinned in lakefile.toml), its prebuilt cache
-COPY env /env
+# the environment the checks run in: Mathlib at its v4.36.0 tag (commit pinned in lakefile.toml), its prebuilt cache;
+# this layer depends only on the lakefile and the toolchain pin
+COPY env/lakefile.toml env/lean-toolchain /env/
 RUN cd /env && lake update 2>&1 | tail -2 && lake exe cache get 2>&1 | tail -3 \
- && lake build 2>&1 | tail -2 && test -f .lake/packages/mathlib/.lake/build/lib/lean/Mathlib.olean
+ && test -f .lake/packages/mathlib/.lake/build/lib/lean/Mathlib.olean
+# lean-check's own Lean library (PqcfCert), built and proof-checked here; the build must produce its .olean files
+COPY env/LeanCheckEnv.lean /env/
+COPY env/LeanCheckEnv /env/LeanCheckEnv
+RUN cd /env && lake build 2>&1 | tail -3 && test -f .lake/build/lib/lean/LeanCheckEnv/PolyCert.olean \
+ && test -f .lake/build/lib/lean/LeanCheckEnv.olean
 WORKDIR /env
 CMD ["lake", "env", "/repl/.lake/build/bin/repl"]

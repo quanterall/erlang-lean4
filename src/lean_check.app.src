@@ -7,7 +7,7 @@
   {env, [{workers, 1},                                 % REPL processes, each holding Mathlib in memory (~several GB)
          {env_dir, "/env"},                            % the Lake project whose packages a check may import
          {repl, "/repl/.lake/build/bin/repl"},
-         {header, "import Mathlib"},                   % the base environment every check starts from
+         {header, "import LeanCheckEnv"},              % the base environment: Mathlib and PqcfCert
          {start_timeout, 900000},                      % importing Mathlib: up to 15 minutes on a cold cache
          {max_checks, 100}                             % a worker restarts after this many checks (the REPL keeps every environment)
         ]},

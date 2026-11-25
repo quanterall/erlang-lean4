@@ -38,7 +38,9 @@ valid() ->
         <<"theorem lc_frac : (1 : ℚ) / 3 + 1 / 6 = 1 / 2 := by norm_num"/utf8>>,
         <<"namespace Pq\ntheorem lc_inner (n : ℕ) : n + 0 = n := by simp\nend Pq"/utf8>>,
         % classical logic is allowed: Classical.choice is approved
-        <<"theorem lc_em' (p : Prop) : p ∨ ¬p := Classical.em p"/utf8>>]],
+        <<"theorem lc_em' (p : Prop) : p ∨ ¬p := Classical.em p"/utf8>>,
+        % a reflective certificate (PqcfCert, in the base environment): (x0 + x1)^2 = x0^2 + 2 x0 x1 + x1^2
+        <<"theorem lc_cert : ∀ ρ : ℕ → ℚ, PqcfCert.eval ρ (.pow (.add (.v 0) (.v 1)) 2) = PqcfCert.eval ρ (.add (.add (.pow (.v 0) 2) (.mul (.c 2) (.mul (.v 0) (.v 1)))) (.pow (.v 1) 2)) := fun ρ => PqcfCert.cert _ _ (by decide +kernel) ρ"/utf8>>]],
     V = c(<<"theorem lc_sq (a b : ℚ) : (a + b) ^ 2 = a ^ 2 + 2 * a * b + b ^ 2 := by ring"/utf8>>),
     [#{name := <<"lc_sq"/utf8>>, axioms := Ax}] = maps:get(theorems, V),
     ?assert(lists:all(fun(A) -> lists:member(A, [<<"propext"/utf8>>, <<"Classical.choice"/utf8>>, <<"Quot.sound"/utf8>>]) end, Ax)).
@@ -55,7 +57,9 @@ invalid() ->
         {<<"theorem lc_t : 2 ^ 10 = 1024 := by native_decide"/utf8>>, forbidden},
         % a false statement, a missing theorem, nothing to check
         {<<"theorem lc_wrong : (2 : ℕ) + 2 = 5 := by norm_num"/utf8>>, errors},
-        {<<"def x : ℕ := 1"/utf8>>, no_theorem}],
+        {<<"def x : ℕ := 1"/utf8>>, no_theorem},
+        % a false identity: the canonical forms differ, decide fails
+        {<<"theorem lc_cert_wrong : ∀ ρ : ℕ → ℚ, PqcfCert.eval ρ (.pow (.add (.v 0) (.v 1)) 2) = PqcfCert.eval ρ (.add (.add (.pow (.v 0) 2) (.mul (.c 3) (.mul (.v 0) (.v 1)))) (.pow (.v 1) 2)) := fun ρ => PqcfCert.cert _ _ (by decide +kernel) ρ"/utf8>>, errors}],
     [begin
          V = c(Src),
          ?assertEqual({Src, invalid}, {Src, maps:get(status, V)}),

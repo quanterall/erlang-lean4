@@ -70,6 +70,24 @@ it adds Lean's compiler to the trusted base, and the axiom it introduces then ha
 axioms, with Lean's kernel, Mathlib and this toolchain as the trusted base. It says nothing about whether the
 statement says what its author meant: a wrong or weak statement can be proved correctly. Statements need to be read.
 
+## Reflective certificates for large polynomial identities (PqcfCert)
+
+Lean's `ring` tactic builds its proof step by step; on identities between polynomials with hundreds of terms it
+does not finish in useful time (a 575-term identity ran for more than 30 minutes, as did `grind`). The base
+environment therefore includes `PqcfCert` ([docker/env/LeanCheckEnv/PolyCert.lean](docker/env/LeanCheckEnv/PolyCert.lean)):
+polynomial expressions `E` (integer constants, variables, sums, products, powers), their value `eval ρ e` in any
+commutative ring, and a canonical form `norm e` (expanded, sorted, equal monomials merged, zeros dropped), with one
+theorem proved once:
+
+```lean
+theorem PqcfCert.cert (a b : E) (h : norm a = norm b) (ρ : ℕ → R) : eval ρ a = eval ρ b
+```
+
+A certificate for a particular identity is then `PqcfCert.cert _ _ (by decide +kernel) ρ`: Lean's kernel computes
+both canonical forms and compares them, with no new trust (no `native_decide`, no new axioms). The same 575-term
+identity takes about a minute. Every function in PqcfCert is structurally recursive so that the kernel can evaluate
+it; the library is compiled and its proofs checked when the image is built.
+
 ## Untrusted input
 
 A submitted proof is untrusted: Lean can run code while it checks a file. Two lines of defence:
@@ -92,7 +110,7 @@ A submitted proof is untrusted: Lean can run code while it checks a file. Two li
 - `lean_check_sup`: restarts workers that die or time out.
 
 Configuration (application environment): `workers` (default 1; each holds Mathlib in memory), `env_dir` (`/env`),
-`repl` (`/repl/.lake/build/bin/repl`), `header` (`import Mathlib`), `start_timeout`, `max_checks`.
+`repl` (`/repl/.lake/build/bin/repl`), `header` (`import LeanCheckEnv`: Mathlib and PqcfCert), `start_timeout`, `max_checks`.
 
 ## Versions (pinned)
 

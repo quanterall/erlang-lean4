@@ -25,7 +25,7 @@ init(I) ->
     process_flag(trap_exit, true),
     Env = application:get_env(lean_check, env_dir, "/env"),
     Repl = application:get_env(lean_check, repl, "/repl/.lake/build/bin/repl"),
-    Header = application:get_env(lean_check, header, "import Mathlib"),
+    Header = application:get_env(lean_check, header, "import LeanCheckEnv"),
     StartTimeout = application:get_env(lean_check, start_timeout, 900000),
     MaxChecks = application:get_env(lean_check, max_checks, 100),
     LeanPath = string:trim(os:cmd("cd " ++ Env ++ " && lake env printenv LEAN_PATH")),

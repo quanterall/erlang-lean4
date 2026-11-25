@@ -23,7 +23,9 @@ that a gcd is the *greatest* common divisor, or that factors are irreducible).
   claimed, and the part a person must read.
 - **Proof**: the Lean tactic script or term that proves it (`by ring`, `by norm_num`). Nobody needs to read it: Lean
   checks it.
-- **Base environment**: what every check may use: Lean 4 and Mathlib (`import Mathlib`), loaded once per worker.
+- **Base environment**: what every check may use: Lean 4, Mathlib and PqcfCert (`import LeanCheckEnv`), loaded once
+  per worker. PqcfCert certifies large polynomial identities by kernel computation (README, "Reflective
+  certificates").
   Each check runs in a fresh child of it and cannot see other checks.
 - **Verdict**: `valid` when Lean reported no error and no `sorry` and every theorem exists and depends only on the
   approved axioms (Lean's standard `propext`, `Classical.choice`, `Quot.sound`).
