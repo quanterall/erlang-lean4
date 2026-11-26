@@ -1,9 +1,9 @@
 {application, lean_check,
  [{description, "Lean 4 proof checking for Erlang: a supervised pool of Lean REPL workers with Mathlib"},
-  {vsn, "0.1.0"},
+  {vsn, "0.2.0"},
   {registered, [lean_check_sup, lean_check_pool]},
   {mod, {lean_check_app, []}},
-  {applications, [kernel, stdlib]},
+  {applications, [kernel, stdlib, crypto, inets]},
   {env, [{workers, 1},                                 % REPL processes, each holding Mathlib in memory (~several GB)
          {env_dir, "/env"},                            % the Lake project whose packages a check may import
          {repl, "/repl/.lake/build/bin/repl"},

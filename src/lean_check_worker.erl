@@ -12,7 +12,9 @@
 start_link(I) -> gen_server:start_link(?MODULE, I, []).
 
 %% run Source in a child of the base environment, then #print axioms for each of Names:
-%%   {ok, #{messages => [..], sorries => N, axioms => #{Name => [Axiom] | missing}, elapsed_ms => T}}
+%%   {ok, #{messages => [..], sorries => N, sorry_goals => [..], tactics => [..],
+%%          axioms => #{Name => {[Axiom] | missing, Statement | none}},
+%%          elapsed_ms => T}}
 %% | {error, timeout} (the REPL is killed and this worker exits; the supervisor starts a fresh one)
 %% | {error, {crashed, Why}}
 run(Worker, Source, Names, Timeout) ->
@@ -44,7 +46,8 @@ init(I) ->
 handle_call({run, Source, Names, Timeout}, _From, #{base := Base, checks := C, max_checks := Max} = S) ->
     T0 = erlang:monotonic_time(millisecond),
     Deadline = T0 + Timeout,
-    case request(S, #{cmd => Source, env => Base}, Timeout) of
+    % allTactics: every tactic with the goals before it, for the verdict's open goals
+    case request(S, #{cmd => Source, env => Base, allTactics => true}, Timeout) of
         {ok, R, S1} ->
             Env = maps:get(<<"env">>, R, undefined),
             {Axioms, S2} = axioms(Names, Env, Deadline, S1),
@@ -53,6 +56,8 @@ handle_call({run, Source, Names, Timeout}, _From, #{base := Base, checks := C, m
                 _ ->
                     Out = #{messages => maps:get(<<"messages">>, R, []),
                             sorries => length(maps:get(<<"sorries">>, R, [])),
+                            sorry_goals => maps:get(<<"sorries">>, R, []),
+                            tactics => maps:get(<<"tactics">>, R, []),
                             axioms => Axioms,
                             elapsed_ms => erlang:monotonic_time(millisecond) - T0},
                     case C + 1 >= Max of
@@ -78,7 +83,13 @@ axioms(Names, Env, Deadline, S) ->
                    (Name, {Acc, Sx}) ->
                         Left = Deadline - erlang:monotonic_time(millisecond),
                         case Left > 0 andalso request(Sx, #{cmd => <<"#print axioms ", Name/binary>>, env => Env}, Left) of
-                            {ok, R, Sy} -> {Acc#{Name => parse_axioms(Name, R)}, Sy};
+                            {ok, R, Sy} ->
+                                % the statement as Lean elaborated it (R4): #check @Name prints "@Name : Type"
+                                Left2 = Deadline - erlang:monotonic_time(millisecond),
+                                case Left2 > 0 andalso request(Sy, #{cmd => <<"#check @", Name/binary>>, env => Env}, Left2) of
+                                    {ok, R2, Sz} -> {Acc#{Name => {parse_axioms(Name, R), parse_check(R2)}}, Sz};
+                                    _ -> {timeout, Sy}
+                                end;
                             _ -> {timeout, Sx}
                         end
                 end, {#{}, S}, Names).
@@ -102,6 +113,17 @@ parse_axioms(_Name, R) ->
     end.
 
 errors(R) -> [M || #{<<"severity">> := <<"error">>} = M <- maps:get(<<"messages">>, R, [])].
+
+%% "@Name : T" -> T (none when the name is unknown)
+parse_check(R) ->
+    case [D || #{<<"severity">> := <<"info">>, <<"data">> := D} <- maps:get(<<"messages">>, R, [])] of
+        [D | _] ->
+            case binary:split(D, <<" : ">>) of
+                [_, T] -> T;
+                _ -> none
+            end;
+        [] -> none
+    end.
 
 %% one JSON request, its JSON response
 request(#{port := Port} = S, Cmd, Timeout) ->

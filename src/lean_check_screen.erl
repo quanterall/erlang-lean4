@@ -8,7 +8,7 @@
 %% It also finds the theorems a check must audit: the names after `theorem` and `lemma`, with the namespaces open
 %% at that point.
 -module(lean_check_screen).
--export([screen/2, theorems/1, strip/1]).
+-export([screen/2, theorems/1, theorem_lines/1, strip/1]).
 
 -define(FORBIDDEN, [<<"#eval">>, <<"#exit">>, <<"#print">>, <<"run_cmd">>, <<"run_tac">>, <<"run_elab">>,
                     <<"run_meta">>, <<"elab">>, <<"elab_rules">>, <<"macro">>, <<"macro_rules">>, <<"syntax">>,
@@ -49,6 +49,20 @@ theorems([K, N | Rest], Ns, Acc) when K =:= <<"theorem">>; K =:= <<"lemma">> ->
     theorems(Rest, Ns, [Full | Acc]);
 theorems([_ | Rest], Ns, Acc) -> theorems(Rest, Ns, Acc).
 
+%% the theorems with the line each starts on: [{FullName, Line}] (comments do not shift lines)
+theorem_lines(Source) ->
+    Lines = lists:enumerate(binary:split(strip(Source), <<"\n">>, [global])),
+    {_, Acc} = lists:foldl(fun({L, Text}, {Ns, Acc0}) -> line_theorems(words(Text), L, Ns, Acc0) end, {[], []}, Lines),
+    lists:reverse(Acc).
+
+line_theorems([], _, Ns, Acc) -> {Ns, Acc};
+line_theorems([<<"namespace">>, N | Rest], L, Ns, Acc) -> line_theorems(Rest, L, [N | Ns], Acc);
+line_theorems([<<"end">>, N | Rest], L, [N | Ns], Acc) -> line_theorems(Rest, L, Ns, Acc);
+line_theorems([K, N | Rest], L, Ns, Acc) when K =:= <<"theorem">>; K =:= <<"lemma">> ->
+    Full = lists:foldl(fun(P, A) -> <<P/binary, ".", A/binary>> end, N, Ns),
+    line_theorems(Rest, L, Ns, [{Full, L} | Acc]);
+line_theorems([_ | Rest], L, Ns, Acc) -> line_theorems(Rest, L, Ns, Acc).
+
 %% the words of the source: identifiers with dots and the commands starting with #; brackets, binders and
 %% operators separate them (a name in `theorem foo (x : Nat)` is `foo`)
 words(Src) ->
@@ -62,6 +76,7 @@ strip(Src) -> iolist_to_binary(strip(Src, 0, [])).
 strip(<<>>, _, Acc) -> lists:reverse(Acc);
 strip(<<"/-", Rest/binary>>, D, Acc) -> strip(Rest, D + 1, [<<" ">> | Acc]);
 strip(<<"-/", Rest/binary>>, D, Acc) when D > 0 -> strip(Rest, D - 1, [<<" ">> | Acc]);
+strip(<<"\n", Rest/binary>>, D, Acc) when D > 0 -> strip(Rest, D, [<<"\n">> | Acc]);    % lines are kept
 strip(<<_/utf8, Rest/binary>>, D, Acc) when D > 0 -> strip(Rest, D, Acc);
 strip(<<"--", Rest/binary>>, 0, Acc) ->
     case binary:split(Rest, <<"\n">>) of

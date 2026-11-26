@@ -88,6 +88,34 @@ both canonical forms and compares them, with no new trust (no `native_decide`, n
 identity takes about a minute. Every function in PqcfCert is structurally recursive so that the kernel can evaluate
 it; the library is compiled and its proofs checked when the image is built.
 
+## Proving a statement, open goals, hints (0.2.0)
+
+Additions requested by the eagent team (FVLLMP), for proofs written by a model in a reasoning loop:
+
+- `lean_check:prove(Statement, Opts)`: a statement without its proof (`theorem t (n : ℕ) : Even (n * (n + 1))`);
+  lean-check tries `rfl`, `decide`, `norm_num`, `simp`, `ring`, `omega`, `linarith`, `nlinarith`, `positivity`,
+  `field_simp; ring`, `intros; linarith`, `intros; nlinarith` and `exact?` in order and returns the first proof
+  (`proof`, `source`, `tried => [#{tactic, result, ms}]`). A search tactic's suggestion (`exact?`: "Try this: exact
+  ...") is checked again on its own, so a valid verdict rests on an ordinary proof. Options: `tactics` (from an allowed
+  set), `lemmas => [Term]` (hint terms such as `sq_nonneg (x - 3)`, passed to `nlinarith`, `linarith`, `simp`),
+  `per_tactic_timeout` (20 s), `search_timeout` (90 s: `exact?` needs about 30 s on full Mathlib), `timeout`,
+  `counterexample => true` (when nothing proves it, Mathlib's `plausible` looks for a counterexample:
+  `counterexample => <<"n := 2">>`; the verdict stays invalid).
+- In an invalid verdict, `goals`: per error and per `sorry`, the goal state at that point, as Lean prints it (at most
+  8, each clipped to 2,000 characters); and `hints`: for notation outdated at the pinned versions (`∑ x in s`,
+  `λ x,`, `begin ... end`, `nat.`, `assume`, `cases h with`, `{ tac }`), what to write instead.
+- `lean_check:syntax_notes()`: a short note (under 1,500 characters) on the notation of the pinned versions, for a
+  model's tool description; it is kept with the version pins.
+- Per theorem: `status`, `errors`, and `statement`, its type as Lean elaborated it (coercions shown: `↑n`).
+- Each check in its own namespace (`isolate`, default true): a theorem named `sq` no longer clashes with Mathlib's;
+  names are reported without the prefix.
+- `status/0`: checks, valid / invalid / timeout counts, mean and 95th-percentile time, worker restarts, the time since
+  the base environment was loaded; one log line per check (status, reason, time, theorem names; not the source).
+- An HTTP front (`lean_check_http`, OTP's httpd, off by default): `POST /check`, `POST /prove`, `GET /status`, JSON
+  in and out, a bearer token from a file compared in constant time, limits on body size, clients and check time;
+  requests cannot approve axioms or enable `native_decide`. Started by the application setting
+  `{http, #{port => P, token_file => F}}` (also `bind_address`, `max_body`, `max_clients`, `max_timeout`).
+
 ## Untrusted input
 
 A submitted proof is untrusted: Lean can run code while it checks a file. Two lines of defence:
